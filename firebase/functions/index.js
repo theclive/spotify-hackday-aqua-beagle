@@ -125,7 +125,7 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
     const trackAttribute = encodeURIComponent(parameters['track_attribute']);
     const attributeValue = encodeURIComponent(parameters['attribute_value']);
     const genre = encodeURIComponent(parameters['genre']);
-    const oAuthUrl = `https://spotify-aqua-beagle.netlify.com/?track_attribute=${trackAttribute}&attribute_value=${attributeValue}&genre=${genre}`;
+    const oAuthUrl = `https://spotify-aqua-beagle.netlify.com/#/?track_attribute=${trackAttribute}&attribute_value=${attributeValue}&genre=${genre}`;
     return `Click here to view your playlist. ${oAuthUrl}`;
   }
 
