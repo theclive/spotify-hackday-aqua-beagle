@@ -2,6 +2,7 @@
 // for Dialogflow fulfillment library docs, samples, and to report issues
 'use strict';
  
+const fetch = require('node-fetch');
 const functions = require('firebase-functions');
 const {WebhookClient} = require('dialogflow-fulfillment');
 const {Card, Suggestion} = require('dialogflow-fulfillment');
@@ -10,8 +11,17 @@ const SpotifyWebApi = require('spotify-web-api-node');
 process.env.DEBUG = 'dialogflow:debug'; // enables lib debugging statements
 
 const userId = '5butodgv0iy83aosjzhw23f76';
-const spotify = new SpotifyWebApi();
-spotify.setAccessToken('BQDbw-RCGX5RxhJAWAxXk9JMTowrB3m1vo_uEOczIIXzoMRjE07NEyliJIHmM3wXO-wqKKGSMiaT_VMW1OTksokKpDDkd5Hdvia9UxUkPKpowbp1nI4Cw1UeLUQAPFWp3JO7oIxJ4OosxXd4oA4c6V6OtNmEGwTWy33q3aPGSJTJr7So1pkrszzdfH5bCQQbPg');
+//const spotify = new SpotifyWebApi();
+//spotify.setAccessToken('BQDbw-RCGX5RxhJAWAxXk9JMTowrB3m1vo_uEOczIIXzoMRjE07NEyliJIHmM3wXO-wqKKGSMiaT_VMW1OTksokKpDDkd5Hdvia9UxUkPKpowbp1nI4Cw1UeLUQAPFWp3JO7oIxJ4OosxXd4oA4c6V6OtNmEGwTWy33q3aPGSJTJr7So1pkrszzdfH5bCQQbPg');
+const spotify = new SpotifyWebApi({
+  clientId: '888230b047b34777b4cabfb8b5105689',
+  clientSecret: '8ae0ddde397e4faea707cecc1436800b',
+  redirectUri: 'http://localhost:1000/'
+});
+spotify.setAccessToken('BQADGH5m5aVfsCODf9BjQdvW0F0Zlpw41munq_al70Io0_bjd6-SVSc2Y1JOiHzbeIl21fjxhge8Hxj5ve_SEGE8gsZECT4DQzIc9UyIkD7o8Sj0MCM2r6__AReLuO8cPdwqNoB6GCr9wiZFaNTxBgxdd59tLAm99cZ0mBtfgFsGWOY_dQUuw3Bt5B_KGrp-eBF5');
+
+const refreshToken = 'AQCodOAo891_REhP0GhW13UqRIXBxjc0MAPfXD5NyUW9TLVA0gRDYIIBF-N8C-FdqOPf4a7q7DPUBARhPMgczCx9al646Zxl_Ko2ITzvtgxaraVvGTTjySbM3xwasO5iW6_D9w';
+spotify.setRefreshToken(refreshToken);
 
 exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, response) => {
   const agent = new WebhookClient({ request, response });
@@ -71,17 +81,32 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   }
 
   function addTracksToPlaylist(playlist, trackUris){
-    return spotify.addTracksToPlaylist(userId, playlist.id, trackUris);
+    return spotify.addTracksToPlaylist(playlist.id, trackUris);
   }
 
   function createPlaylist(){
-    const playlistName = `Dynamic Playlist ${newUUID()}`;
+    const playlistName = `Aqua Beagel Non-OAuth Playlist`;
     return spotify.createPlaylist(userId, playlistName, { 'public' : true });
+  }
+
+  async function verifyAccessToken(){
+    console.log("Verifying Access");
+    try {
+      const me = await spotify.getMe();
+      console.log("Access Verified: " + me);
+    } catch (err) {
+      console.warn("Auth probably expired, refreshing token", err);
+      const res = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', body: "grant_type=refresh_token&refreshtoken=" + encodeURIComponent(refreshToken), headers: {'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ODg4MjMwYjA0N2IzNDc3N2I0Y2FiZmI4YjUxMDU2ODk6OGFlMGRkZGUzOTdlNGZhZWE3MDdjZWNjMTQzNjgwMGI='} });
+      const json = await res.json();
+      spotify.setAccessToken(json.access_token);
+      console.log("Token Refreshed");
+    }
   }
 
   async function generatePlaylist(trackAttribute, attributeValue, genre){
 
     try{
+      await verifyAccessToken();
       console.log("Getting Recommendations");
       const recommendationResponse = await getRecommendations(trackAttribute, attributeValue, genre);
       const recommendations = normalizeSpotifyResponse(recommendationResponse);
@@ -99,13 +124,13 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
 
       return playlist.external_urls.spotify;
     } catch(err) {
-        console.log('Something went wrong!', err);
+        console.error('Something went wrong!', err);
         throw err;
     }
   }
 
   function buildPlaylistResponse(parameters, playlistUrl){
-    return `Here is your playlist with ${parameters['track_attribute']} @ ${parameters['attribute_value']}%: ${playlistUrl}`;
+    return `Here is your ${parameters['genre']} playlist with ${parameters['track_attribute']} @ ${parameters['attribute_value']}%: ${playlistUrl}`;
   }
 
   async function playlistHandler(agent) {
@@ -178,7 +203,8 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
   let intentMap = new Map();
   intentMap.set('Default Welcome Intent', welcome);
   intentMap.set('Default Fallback Intent', fallback);
-  intentMap.set('Default Welcome Intent - Get Playlist', playlistHandler);
+  intentMap.set('Default Welcome Intent - Get Playlist', oAuthHandler);
+  intentMap.set('NoOAuth - Get Playlist', playlistHandler);
   // intentMap.set('your intent name here', googleAssistantHandler);
   agent.handleRequest(intentMap);
 });
