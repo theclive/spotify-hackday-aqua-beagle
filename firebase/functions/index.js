@@ -96,9 +96,10 @@ exports.dialogflowFirebaseFulfillment = functions.https.onRequest((request, resp
       console.log("Access Verified: " + me);
     } catch (err) {
       console.warn("Auth probably expired, refreshing token", err);
-      const res = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', body: "grant_type=refresh_token&refreshtoken=" + encodeURIComponent(refreshToken), headers: {'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ODg4MjMwYjA0N2IzNDc3N2I0Y2FiZmI4YjUxMDU2ODk6OGFlMGRkZGUzOTdlNGZhZWE3MDdjZWNjMTQzNjgwMGI='} });
+      const res = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', body: "grant_type=refresh_token&refresh_token=" + encodeURIComponent(refreshToken), headers: {'Content-Type': 'application/x-www-form-urlencoded', 'Authorization': 'Basic ODg4MjMwYjA0N2IzNDc3N2I0Y2FiZmI4YjUxMDU2ODk6OGFlMGRkZGUzOTdlNGZhZWE3MDdjZWNjMTQzNjgwMGI='} });
       const json = await res.json();
       spotify.setAccessToken(json.access_token);
+      console.log(json);
       console.log("Token Refreshed");
     }
   }
